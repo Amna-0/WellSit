@@ -11,7 +11,5 @@ export const firebaseConfig = {
   messagingSenderId: "1062663611405",
   appId: "1:1062663611405:web:4d67294aff53f3cb20e144",
   measurementId: "G-VCMH843BM5",
-  // Realtime Database → the URL shown at the top of the database page once
-  // you create it, e.g. "https://wellsit-41b1f-default-rtdb.firebaseio.com".
-  databaseURL: "YOUR_DATABASE_URL",
+  databaseURL: "https://wellsit-41b1f-default-rtdb.firebaseio.com",
 };
