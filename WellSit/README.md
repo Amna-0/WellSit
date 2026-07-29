@@ -14,7 +14,7 @@ frame, image, or video is ever uploaded anywhere.
 - **UI**: Vanilla HTML/CSS/JS, no build step, no framework.
 - **Charts**: Chart.js (CDN).
 - **i18n**: English / Arabic (RTL) toggle, plain JS dictionary in `js/translations.js`.
-- **Cloud sync (optional)**: [Firebase](https://firebase.google.com) Authentication + Firestore, loaded from CDN — see [Optional: cloud sync with Firebase](#optional-cloud-sync-with-firebase) below.
+- **Cloud sync (optional)**: [Firebase](https://firebase.google.com) Authentication + Realtime Database, loaded from CDN — see [Optional: cloud sync with Firebase](#optional-cloud-sync-with-firebase) below.
 
 Posture detection itself never touches a server — the only network requests
 are the initial CDN loads for the model/library files, after which camera
@@ -74,10 +74,10 @@ js/translations.js       EN / AR string dictionary
 js/postureAnalysis.js    Landmark → angle → posture-status math (pure functions)
 js/main.js                Camera, pose-model loop, UI wiring, session dashboard
 js/firebase-config.js     Your Firebase project's web config (fill this in)
-js/firebase-app.js        Initializes the Firebase app/auth/firestore instances
+js/firebase-app.js        Initializes the Firebase app/auth/database instances
 js/auth.js                Sign up / sign in / Google sign-in / sign out
 js/cloudSync.js           Settings sync + session history + all-time stats
-firestore.rules           Per-user Firestore security rules
+database.rules.json       Per-user Realtime Database security rules
 run.ps1                   One-click local server + browser launch
 ```
 
@@ -89,9 +89,15 @@ posture detection is still 100% local. Signing in adds:
 - An account (email/password or Google) tied to a Firebase project you own.
 - Settings (language, alert threshold, sound) synced in real time across
   every device signed into that account.
-- Session history saved to Firestore, and an "All-Time Stats" panel
-  aggregating it (total sessions, total time, average good-posture %,
+- Session history saved to the Realtime Database, and an "All-Time Stats"
+  panel aggregating it (total sessions, total time, average good-posture %,
   total alerts).
+
+Realtime Database (rather than Firestore) on purpose: Firestore now requires
+the project to be on Google Cloud's paid Blaze plan (a linked card, even
+though usage would stay within the free quota) just to create a database.
+Realtime Database doesn't have that requirement, so this stays free with no
+card needed.
 
 **Setup:**
 
@@ -99,17 +105,21 @@ posture detection is still 100% local. Signing in adds:
 2. **Authentication** → *Get started* → enable the **Email/Password**
    provider (and **Google**, if you want the "Continue with Google" button
    to work).
-3. **Firestore Database** → *Create database* → start in production mode.
-4. Deploy `firestore.rules` from this repo (Firestore → Rules tab → paste
-   its contents → Publish). It restricts every user to reading/writing only
-   their own data.
+3. **Realtime Database** → *Create database* → pick a location → start in
+   **locked mode**. Note the database URL shown at the top of the page
+   (looks like `https://<project-id>-default-rtdb.firebaseio.com`) — you'll
+   need it below.
+4. Deploy `database.rules.json` from this repo (Realtime Database → Rules
+   tab → paste its contents → Publish). It restricts every user to
+   reading/writing only their own data.
 5. **Project settings** → *Your apps* → add a **Web app** → copy the
    `firebaseConfig` object it gives you into `js/firebase-config.js`,
-   replacing the `YOUR_...` placeholders.
+   replacing the `YOUR_...` placeholders, and set `databaseURL` to the URL
+   from step 3.
 
 That config object is safe to ship in client-side code (it identifies the
 project, it isn't a secret) — access control comes entirely from
-`firestore.rules`, not from hiding it.
+`database.rules.json`, not from hiding it.
 
 If `js/firebase-config.js` is left with its placeholder values, the app
 detects that automatically: the account panel shows a "cloud sync isn't set
