@@ -22,6 +22,33 @@
       AI-powered real-time posture monitoring — private, local, and free.
     </p>
 
+    <section class="card account-card" id="accountCard">
+      <div id="authLoggedOut" class="auth-block">
+        <h3 data-i18n="authTitle">Account &amp; Cloud Sync</h3>
+        <p class="auth-hint" data-i18n="authHint">Sign in to save your session history and sync settings across devices.</p>
+        <form id="authForm" class="auth-form">
+          <input type="email" id="authEmail" data-i18n-placeholder="emailLabel" placeholder="Email" required />
+          <input type="password" id="authPassword" data-i18n-placeholder="passwordLabel" placeholder="Password" required minlength="6" />
+          <div class="auth-actions">
+            <button type="submit" id="signInBtn" class="btn btn-primary" data-i18n="signInBtn">Sign In</button>
+            <button type="button" id="signUpBtn" class="btn btn-secondary" data-i18n="signUpBtn">Create Account</button>
+            <button type="button" id="googleSignInBtn" class="btn btn-secondary" data-i18n="signInGoogleBtn">Continue with Google</button>
+          </div>
+        </form>
+        <p id="authError" class="auth-error hidden"></p>
+        <p id="firebaseWarning" class="auth-warning hidden" data-i18n="firebaseNotConfigured">Cloud sync isn't set up yet — add your Firebase project config in js/firebase-config.js.</p>
+      </div>
+
+      <div id="authLoggedIn" class="auth-block hidden">
+        <div class="user-chip">
+          <span class="user-dot"></span>
+          <span id="userEmailDisplay"></span>
+        </div>
+        <p class="auth-hint" data-i18n="syncedNote">Settings and session history are synced to your account.</p>
+        <button id="signOutBtn" class="btn btn-secondary" type="button" data-i18n="signOutBtn">Sign Out</button>
+      </div>
+    </section>
+
     <main class="grid">
       <section class="card camera-card">
         <div class="video-wrap" id="videoWrap">
@@ -108,6 +135,28 @@
       <div class="chart-wrap">
         <canvas id="trendChart"></canvas>
         <p id="chartEmpty" class="chart-empty" data-i18n="chartEmpty">Start a session to see your posture trend here.</p>
+      </div>
+    </section>
+
+    <section class="card all-time-card hidden" id="allTimeCard">
+      <h3 data-i18n="allTimeTitle">All-Time Stats</h3>
+      <div class="stats-grid">
+        <div class="stat">
+          <span id="atSessionsValue" class="stat-value">0</span>
+          <span class="stat-label" data-i18n="atSessions">Sessions</span>
+        </div>
+        <div class="stat">
+          <span id="atDurationValue" class="stat-value">00:00</span>
+          <span class="stat-label" data-i18n="atDuration">Total Time</span>
+        </div>
+        <div class="stat">
+          <span id="atGoodPctValue" class="stat-value good">--%</span>
+          <span class="stat-label" data-i18n="atGoodPct">Avg Good Posture</span>
+        </div>
+        <div class="stat">
+          <span id="atAlertsValue" class="stat-value">0</span>
+          <span class="stat-label" data-i18n="atAlerts">Total Alerts</span>
+        </div>
       </div>
     </section>
 

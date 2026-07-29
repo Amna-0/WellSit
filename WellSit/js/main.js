@@ -45,6 +45,25 @@ const alertDismiss = document.getElementById("alertDismiss");
 const langToggle = document.getElementById("langToggle");
 const langToggleText = document.getElementById("langToggleText");
 
+const accountCard = document.getElementById("accountCard");
+const authLoggedOut = document.getElementById("authLoggedOut");
+const authLoggedIn = document.getElementById("authLoggedIn");
+const authForm = document.getElementById("authForm");
+const authEmail = document.getElementById("authEmail");
+const authPassword = document.getElementById("authPassword");
+const signUpBtn = document.getElementById("signUpBtn");
+const googleSignInBtn = document.getElementById("googleSignInBtn");
+const signOutBtn = document.getElementById("signOutBtn");
+const authError = document.getElementById("authError");
+const firebaseWarning = document.getElementById("firebaseWarning");
+const userEmailDisplay = document.getElementById("userEmailDisplay");
+
+const allTimeCard = document.getElementById("allTimeCard");
+const atSessionsValue = document.getElementById("atSessionsValue");
+const atDurationValue = document.getElementById("atDurationValue");
+const atGoodPctValue = document.getElementById("atGoodPctValue");
+const atAlertsValue = document.getElementById("atAlertsValue");
+
 /* ---------------------------------------------------------------------- */
 /* State                                                                  */
 /* ---------------------------------------------------------------------- */
@@ -71,6 +90,11 @@ let alertHideTimeout = null;
 let session = null; // reset on start
 let trendChart = null;
 
+let cloud = null; // populated by initCloudSync() once Firebase modules load successfully
+let currentUser = null;
+let unsubscribeSettings = null;
+let applyingRemoteSettings = false; // guard against write-back loops while syncing
+
 /* ---------------------------------------------------------------------- */
 /* i18n                                                                    */
 /* ---------------------------------------------------------------------- */
@@ -85,6 +109,11 @@ function applyLanguage(newLang) {
     el.textContent = t(lang, key);
   });
 
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    const key = el.getAttribute("data-i18n-placeholder");
+    el.placeholder = t(lang, key);
+  });
+
   langToggleText.textContent = t(lang, "langToggleLabel");
   thresholdValue.textContent = `${settings.alertThreshold}${t(lang, "thresholdUnit")}`;
   updateStatusBadge(currentStatus);
@@ -95,7 +124,10 @@ function applyLanguage(newLang) {
   }
 }
 
-langToggle.addEventListener("click", () => applyLanguage(lang === "en" ? "ar" : "en"));
+langToggle.addEventListener("click", () => {
+  applyLanguage(lang === "en" ? "ar" : "en");
+  syncSettingsToCloud();
+});
 
 /* ---------------------------------------------------------------------- */
 /* Settings                                                                */
@@ -111,11 +143,13 @@ thresholdSlider.addEventListener("input", () => {
   settings.alertThreshold = Number(thresholdSlider.value);
   thresholdValue.textContent = `${settings.alertThreshold}${t(lang, "thresholdUnit")}`;
   localStorage.setItem("posturecare_threshold", String(settings.alertThreshold));
+  syncSettingsToCloud();
 });
 
 soundToggle.addEventListener("change", () => {
   settings.soundEnabled = soundToggle.checked;
   localStorage.setItem("posturecare_sound", String(settings.soundEnabled));
+  syncSettingsToCloud();
 });
 
 /* ---------------------------------------------------------------------- */
@@ -219,6 +253,8 @@ function stopMonitoring() {
     stream = null;
   }
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  persistSessionSummary();
 
   startBtn.disabled = false;
   stopBtn.disabled = true;
@@ -562,6 +598,173 @@ function initTrendChart() {
     },
   });
 }
+
+/* ---------------------------------------------------------------------- */
+/* Account & cloud sync (Firebase)                                         */
+/* ---------------------------------------------------------------------- */
+function authErrorKey(err) {
+  switch (err?.code) {
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+    case "auth/user-not-found":
+      return "authErrorInvalidCreds";
+    case "auth/email-already-in-use":
+      return "authErrorEmailInUse";
+    case "auth/weak-password":
+      return "authErrorWeakPassword";
+    default:
+      return "authErrorGeneric";
+  }
+}
+
+function showAuthError(err) {
+  authError.textContent = t(lang, authErrorKey(err));
+  authError.classList.remove("hidden");
+}
+
+function clearAuthError() {
+  authError.classList.add("hidden");
+}
+
+function setAuthUI(user) {
+  authLoggedOut.classList.toggle("hidden", !!user);
+  authLoggedIn.classList.toggle("hidden", !user);
+  allTimeCard.classList.toggle("hidden", !user);
+  if (user) {
+    userEmailDisplay.textContent = user.email || "";
+  }
+}
+
+// Pushes the current local settings to Firestore, ignoring the write if we're
+// mid-apply of a settings snapshot that just came from Firestore itself
+// (avoids a save -> snapshot -> save feedback loop).
+function syncSettingsToCloud() {
+  if (!cloud || !currentUser || applyingRemoteSettings) return;
+  cloud
+    .saveSettings(currentUser.uid, {
+      lang,
+      alertThreshold: settings.alertThreshold,
+      soundEnabled: settings.soundEnabled,
+    })
+    .catch((err) => console.error("Failed to sync settings:", err));
+}
+
+function applyRemoteSettings(remote) {
+  if (!remote) return;
+  applyingRemoteSettings = true;
+
+  if (remote.lang && remote.lang !== lang) applyLanguage(remote.lang);
+  if (typeof remote.alertThreshold === "number") {
+    settings.alertThreshold = remote.alertThreshold;
+    thresholdSlider.value = settings.alertThreshold;
+    thresholdValue.textContent = `${settings.alertThreshold}${t(lang, "thresholdUnit")}`;
+    localStorage.setItem("posturecare_threshold", String(settings.alertThreshold));
+  }
+  if (typeof remote.soundEnabled === "boolean") {
+    settings.soundEnabled = remote.soundEnabled;
+    soundToggle.checked = settings.soundEnabled;
+    localStorage.setItem("posturecare_sound", String(settings.soundEnabled));
+  }
+
+  applyingRemoteSettings = false;
+}
+
+function persistSessionSummary() {
+  if (!cloud || !currentUser || !session) return;
+  const trackedMs = session.goodMs + session.poorMs;
+  if (trackedMs < 1000) return; // skip near-empty sessions
+
+  cloud
+    .saveSessionSummary(currentUser.uid, {
+      goodMs: session.goodMs,
+      poorMs: session.poorMs,
+      alertCount: session.alertCount,
+    })
+    .then(refreshAllTimeStats)
+    .catch((err) => console.error("Failed to save session summary:", err));
+}
+
+async function refreshAllTimeStats() {
+  if (!cloud || !currentUser) return;
+  try {
+    const stats = await cloud.loadAllTimeStats(currentUser.uid);
+    atSessionsValue.textContent = String(stats.totalSessions);
+    atDurationValue.textContent = formatDuration(Math.round(stats.totalDurationMs / 1000));
+    atGoodPctValue.textContent = stats.avgGoodPct === null ? "--%" : `${stats.avgGoodPct}%`;
+    atAlertsValue.textContent = String(stats.totalAlerts);
+  } catch (err) {
+    console.error("Failed to load all-time stats:", err);
+  }
+}
+
+authForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!cloud) return;
+  clearAuthError();
+  cloud.signIn(authEmail.value, authPassword.value).catch(showAuthError);
+});
+
+signUpBtn.addEventListener("click", () => {
+  if (!cloud) return;
+  clearAuthError();
+  cloud.signUp(authEmail.value, authPassword.value).catch(showAuthError);
+});
+
+googleSignInBtn.addEventListener("click", () => {
+  if (!cloud) return;
+  clearAuthError();
+  cloud.signInWithGoogle().catch(showAuthError);
+});
+
+signOutBtn.addEventListener("click", () => {
+  if (!cloud) return;
+  cloud.signOutUser().catch((err) => console.error("Sign-out failed:", err));
+});
+
+// Firebase is loaded dynamically so that a blocked or offline Firebase CDN
+// only takes out cloud sync, never the core camera/posture-detection feature.
+async function initCloudSync() {
+  let modules;
+  try {
+    modules = await Promise.all([
+      import("./firebase-app.js"),
+      import("./auth.js"),
+      import("./cloudSync.js"),
+    ]);
+  } catch (err) {
+    console.warn("Cloud sync unavailable — Firebase failed to load:", err);
+    accountCard.classList.add("hidden");
+    return;
+  }
+
+  const [appMod, authMod, syncMod] = modules;
+  cloud = { ...appMod, ...authMod, ...syncMod };
+
+  if (!cloud.isFirebaseConfigured) {
+    authForm.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
+    firebaseWarning.classList.remove("hidden");
+    return;
+  }
+
+  cloud.watchAuthState((user) => {
+    currentUser = user;
+    setAuthUI(user);
+    clearAuthError();
+    authForm.reset();
+
+    if (unsubscribeSettings) {
+      unsubscribeSettings();
+      unsubscribeSettings = null;
+    }
+
+    if (user) {
+      unsubscribeSettings = cloud.watchSettings(user.uid, applyRemoteSettings);
+      refreshAllTimeStats();
+    }
+  });
+}
+
+initCloudSync();
 
 /* ---------------------------------------------------------------------- */
 /* Init                                                                     */

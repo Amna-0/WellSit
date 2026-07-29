@@ -102,6 +102,93 @@ html[dir="rtl"] body {
   font-size: 15px;
 }
 
+/* ---------- Account / cloud sync ---------- */
+.account-card {
+  margin-top: 20px;
+}
+
+.auth-hint {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.auth-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.auth-form input {
+  flex: 1 1 200px;
+  min-width: 160px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.auth-form input:focus {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.auth-error {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--status-poor);
+}
+
+.auth-error.hidden {
+  display: none;
+}
+
+.auth-warning {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.auth-warning.hidden {
+  display: none;
+}
+
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.user-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-good);
+  flex-shrink: 0;
+}
+
+/* ---------- All-time stats ---------- */
+.all-time-card {
+  margin-top: 20px;
+}
+
 /* ---------- Layout ---------- */
 .grid {
   display: grid;
