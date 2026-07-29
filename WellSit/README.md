@@ -14,10 +14,12 @@ frame, image, or video is ever uploaded anywhere.
 - **UI**: Vanilla HTML/CSS/JS, no build step, no framework.
 - **Charts**: Chart.js (CDN).
 - **i18n**: English / Arabic (RTL) toggle, plain JS dictionary in `js/translations.js`.
+- **Cloud sync (optional)**: [Firebase](https://firebase.google.com) Authentication + Firestore, loaded from CDN — see [Optional: cloud sync with Firebase](#optional-cloud-sync-with-firebase) below.
 
-Nothing runs on a server. The only network requests are the initial CDN
-loads for the model/library files — after that, everything (camera frames,
-pose landmarks, angle math) stays on-device.
+Posture detection itself never touches a server — the only network requests
+are the initial CDN loads for the model/library files, after which camera
+frames, pose landmarks, and angle math all stay on-device. Signing in for
+cloud sync is opt-in and talks only to your own Firebase project.
 
 ## Running it
 
@@ -71,13 +73,58 @@ css/style.css            Light, calming design system
 js/translations.js       EN / AR string dictionary
 js/postureAnalysis.js    Landmark → angle → posture-status math (pure functions)
 js/main.js                Camera, pose-model loop, UI wiring, session dashboard
+js/firebase-config.js     Your Firebase project's web config (fill this in)
+js/firebase-app.js        Initializes the Firebase app/auth/firestore instances
+js/auth.js                Sign up / sign in / Google sign-in / sign out
+js/cloudSync.js           Settings sync + session history + all-time stats
+firestore.rules           Per-user Firestore security rules
 run.ps1                   One-click local server + browser launch
 ```
+
+## Optional: cloud sync with Firebase
+
+Signing in is optional. Without it, the app works exactly as before —
+posture detection is still 100% local. Signing in adds:
+
+- An account (email/password or Google) tied to a Firebase project you own.
+- Settings (language, alert threshold, sound) synced in real time across
+  every device signed into that account.
+- Session history saved to Firestore, and an "All-Time Stats" panel
+  aggregating it (total sessions, total time, average good-posture %,
+  total alerts).
+
+**Setup:**
+
+1. Create a project at [console.firebase.google.com](https://console.firebase.google.com).
+2. **Authentication** → *Get started* → enable the **Email/Password**
+   provider (and **Google**, if you want the "Continue with Google" button
+   to work).
+3. **Firestore Database** → *Create database* → start in production mode.
+4. Deploy `firestore.rules` from this repo (Firestore → Rules tab → paste
+   its contents → Publish). It restricts every user to reading/writing only
+   their own data.
+5. **Project settings** → *Your apps* → add a **Web app** → copy the
+   `firebaseConfig` object it gives you into `js/firebase-config.js`,
+   replacing the `YOUR_...` placeholders.
+
+That config object is safe to ship in client-side code (it identifies the
+project, it isn't a secret) — access control comes entirely from
+`firestore.rules`, not from hiding it.
+
+If `js/firebase-config.js` is left with its placeholder values, the app
+detects that automatically: the account panel shows a "cloud sync isn't set
+up yet" note and the sign-in form stays disabled, while the rest of the app
+keeps working normally. The Firebase SDK is also loaded lazily and
+defensively — if its CDN can't be reached (offline, blocked network), cloud
+sync silently disables itself instead of breaking the app.
 
 ## Privacy by design
 
 - Camera stream is attached directly to a local `<video>` element and read
   frame-by-frame by the on-device model — never encoded, sent, or stored.
-- No backend, no database, no analytics.
+- No backend for the core posture-detection feature — that stays entirely
+  on-device even for signed-in users.
 - Session stats (duration, good/poor %, alert count, trend chart) live only
-  in memory for the current browser tab and disappear on refresh.
+  in memory for the current browser tab and disappear on refresh, unless
+  you've signed in to opt into saving session history to your own Firebase
+  project.
