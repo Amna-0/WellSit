@@ -2,7 +2,7 @@
 // and it will be picked up automatically by the language toggle logic in main.js.
 export const translations = {
   en: {
-    appTitle: "PostureCare",
+    appTitle: "WellSit",
     appSubtitle: "AI-powered real-time posture monitoring — private, local, and free.",
     langToggleLabel: "العربية",
     startBtn: "Start Monitoring",
@@ -58,11 +58,11 @@ export const translations = {
     atDuration: "Total Time",
     atGoodPct: "Avg Good Posture",
     atAlerts: "Total Alerts",
-    loginTitle: "Sign in to PostureCare",
+    loginTitle: "Sign in to WellSit",
     loginSubtitle: "Track your sitting posture in real time — sign in to get started.",
   },
   ar: {
-    appTitle: "بوسـتشر كير",
+    appTitle: "WellSit",
     appSubtitle: "مراقبة وضعية الجلوس في الوقت الفعلي بالذكاء الاصطناعي — خاصة ومحلية ومجانية.",
     langToggleLabel: "English",
     startBtn: "بدء المراقبة",
@@ -118,7 +118,7 @@ export const translations = {
     atDuration: "إجمالي الوقت",
     atGoodPct: "متوسط الوضعية الجيدة",
     atAlerts: "إجمالي التنبيهات",
-    loginTitle: "تسجيل الدخول إلى بوستشر كير",
+    loginTitle: "تسجيل الدخول إلى WellSit",
     loginSubtitle: "تابع وضعية جلوسك في الوقت الفعلي — سجّل الدخول للبدء.",
   },
 };
