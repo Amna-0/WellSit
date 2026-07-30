@@ -5,16 +5,23 @@ const langToggle = document.getElementById("langToggle");
 const langToggleText = document.getElementById("langToggleText");
 const themeToggle = document.getElementById("themeToggle");
 
-const authForm = document.getElementById("authForm");
-const authEmail = document.getElementById("authEmail");
-const authPassword = document.getElementById("authPassword");
-const signUpBtn = document.getElementById("signUpBtn");
-const googleSignInBtn = document.getElementById("googleSignInBtn");
+const signInForm = document.getElementById("signInForm");
+const signInIdentifier = document.getElementById("signInIdentifier");
+const signInPassword = document.getElementById("signInPassword");
+
+const signUpForm = document.getElementById("signUpForm");
+const signUpUsername = document.getElementById("signUpUsername");
+const signUpEmail = document.getElementById("signUpEmail");
+const signUpPassword = document.getElementById("signUpPassword");
+const signUpConfirmPassword = document.getElementById("signUpConfirmPassword");
+
 const authError = document.getElementById("authError");
 const firebaseWarning = document.getElementById("firebaseWarning");
+const modeSwitchBtn = document.getElementById("modeSwitchBtn");
 
 let lang = localStorage.getItem("posturecare_lang") || "en";
 let cloud = null;
+let mode = "signIn"; // 'signIn' | 'signUp'
 
 /* ---------------------------------------------------------------------- */
 /* i18n                                                                    */
@@ -50,8 +57,24 @@ themeToggle.addEventListener("click", () => {
 });
 
 /* ---------------------------------------------------------------------- */
+/* Sign in / sign up mode switch                                           */
+/* ---------------------------------------------------------------------- */
+function setMode(newMode) {
+  mode = newMode;
+  clearAuthError();
+  signInForm.classList.toggle("hidden", mode !== "signIn");
+  signUpForm.classList.toggle("hidden", mode !== "signUp");
+  modeSwitchBtn.textContent = t(lang, mode === "signIn" ? "switchToSignUp" : "switchToSignIn");
+  modeSwitchBtn.setAttribute("data-i18n", mode === "signIn" ? "switchToSignUp" : "switchToSignIn");
+}
+
+modeSwitchBtn.addEventListener("click", () => setMode(mode === "signIn" ? "signUp" : "signIn"));
+
+/* ---------------------------------------------------------------------- */
 /* Auth                                                                     */
 /* ---------------------------------------------------------------------- */
+const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,24}$/;
+
 function authErrorKey(err) {
   switch (err?.code) {
     case "auth/invalid-credential":
@@ -68,7 +91,8 @@ function authErrorKey(err) {
 }
 
 function showAuthError(err) {
-  authError.textContent = t(lang, authErrorKey(err));
+  const key = typeof err === "string" ? err : authErrorKey(err);
+  authError.textContent = t(lang, key);
   authError.classList.remove("hidden");
 }
 
@@ -76,23 +100,59 @@ function clearAuthError() {
   authError.classList.add("hidden");
 }
 
-authForm.addEventListener("submit", (e) => {
+signInForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!cloud) return;
   clearAuthError();
-  cloud.signIn(authEmail.value, authPassword.value).catch(showAuthError);
+
+  const identifier = signInIdentifier.value.trim();
+  const password = signInPassword.value;
+
+  try {
+    let email = identifier;
+    if (!identifier.includes("@")) {
+      const resolved = await cloud.resolveUsernameToEmail(identifier);
+      if (!resolved) {
+        showAuthError("authErrorInvalidCreds");
+        return;
+      }
+      email = resolved;
+    }
+    await cloud.signIn(email, password);
+  } catch (err) {
+    showAuthError(err);
+  }
 });
 
-signUpBtn.addEventListener("click", () => {
+signUpForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
   if (!cloud) return;
   clearAuthError();
-  cloud.signUp(authEmail.value, authPassword.value).catch(showAuthError);
-});
 
-googleSignInBtn.addEventListener("click", () => {
-  if (!cloud) return;
-  clearAuthError();
-  cloud.signInWithGoogle().catch(showAuthError);
+  const username = signUpUsername.value.trim();
+  const email = signUpEmail.value.trim();
+  const password = signUpPassword.value;
+  const confirmPassword = signUpConfirmPassword.value;
+
+  if (!USERNAME_PATTERN.test(username)) {
+    showAuthError("authErrorUsernameFormat");
+    return;
+  }
+  if (password !== confirmPassword) {
+    showAuthError("authErrorPasswordMismatch");
+    return;
+  }
+
+  try {
+    if (await cloud.isUsernameTaken(username)) {
+      showAuthError("authErrorUsernameTaken");
+      return;
+    }
+    const cred = await cloud.signUp(email, password);
+    await cloud.claimUsername(cred.user.uid, username, email);
+  } catch (err) {
+    showAuthError(err);
+  }
 });
 
 // Firebase is loaded dynamically so a blocked or offline Firebase CDN degrades
@@ -107,8 +167,7 @@ async function initCloudSync() {
     ]);
   } catch (err) {
     console.warn("Cloud sync unavailable — Firebase failed to load:", err);
-    authForm.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
-    firebaseWarning.classList.remove("hidden");
+    disableForms();
     document.body.classList.remove("gate-loading");
     return;
   }
@@ -117,8 +176,7 @@ async function initCloudSync() {
   cloud = { ...appMod, ...authMod, ...syncMod };
 
   if (!cloud.isFirebaseConfigured) {
-    authForm.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
-    firebaseWarning.classList.remove("hidden");
+    disableForms();
     document.body.classList.remove("gate-loading");
     return;
   }
@@ -132,10 +190,19 @@ async function initCloudSync() {
   });
 }
 
+function disableForms() {
+  [signInForm, signUpForm].forEach((form) => {
+    form.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
+  });
+  modeSwitchBtn.disabled = true;
+  firebaseWarning.classList.remove("hidden");
+}
+
 /* ---------------------------------------------------------------------- */
 /* Init                                                                     */
 /* ---------------------------------------------------------------------- */
 initTheme();
 updateThemeToggleIcon();
 applyLanguage(lang);
+setMode("signIn");
 initCloudSync();

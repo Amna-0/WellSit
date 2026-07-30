@@ -1,5 +1,6 @@
 import {
   doc,
+  getDoc,
   setDoc,
   collection,
   addDoc,
@@ -13,6 +14,33 @@ import {
 import { db } from "./firebase-app.js";
 
 const MAX_SESSIONS_FOR_STATS = 500;
+
+/* ---------------------------------------------------------------------- */
+/* Username <-> email lookup                                               */
+/*                                                                          */
+/* Firebase Auth only supports email as the sign-in identifier, so a       */
+/* "usernames" collection maps a chosen username to its account's email.   */
+/* The lookup has to happen *before* the user is authenticated, so         */
+/* firestore.rules allows public read on this collection only — it never   */
+/* exposes anything beyond the username -> email/uid mapping.              */
+/* ---------------------------------------------------------------------- */
+function usernameDoc(username) {
+  return doc(db, "usernames", username.trim().toLowerCase());
+}
+
+export async function isUsernameTaken(username) {
+  const snap = await getDoc(usernameDoc(username));
+  return snap.exists();
+}
+
+export async function resolveUsernameToEmail(username) {
+  const snap = await getDoc(usernameDoc(username));
+  return snap.exists() ? snap.data().email : null;
+}
+
+export function claimUsername(uid, username, email) {
+  return setDoc(usernameDoc(username), { uid, email });
+}
 
 // Real-time settings sync: fires whenever the user's settings change, from
 // this device or another one signed into the same account.

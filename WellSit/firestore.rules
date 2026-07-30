@@ -11,5 +11,16 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
+
+    // Username -> email/uid lookup, used to sign in by username instead of
+    // email. Read must be public since this lookup happens before the user
+    // is authenticated; it only ever exposes the mapping itself, never any
+    // posture/session data. A username can only be claimed once, by the
+    // account it belongs to, and never changed afterward.
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
   }
 }
