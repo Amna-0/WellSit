@@ -6,6 +6,7 @@ import {
 
 import { translations, t } from "./translations.js";
 import { analyzePosture, StatusSmoother, DEFAULT_THRESHOLDS } from "./postureAnalysis.js";
+import { initTheme, applyTheme, getStoredTheme } from "./theme.js";
 
 /* ---------------------------------------------------------------------- */
 /* DOM references                                                         */
@@ -44,21 +45,11 @@ const alertDismiss = document.getElementById("alertDismiss");
 
 const langToggle = document.getElementById("langToggle");
 const langToggleText = document.getElementById("langToggleText");
+const themeToggle = document.getElementById("themeToggle");
 
-const accountCard = document.getElementById("accountCard");
-const authLoggedOut = document.getElementById("authLoggedOut");
-const authLoggedIn = document.getElementById("authLoggedIn");
-const authForm = document.getElementById("authForm");
-const authEmail = document.getElementById("authEmail");
-const authPassword = document.getElementById("authPassword");
-const signUpBtn = document.getElementById("signUpBtn");
-const googleSignInBtn = document.getElementById("googleSignInBtn");
 const signOutBtn = document.getElementById("signOutBtn");
-const authError = document.getElementById("authError");
-const firebaseWarning = document.getElementById("firebaseWarning");
 const userEmailDisplay = document.getElementById("userEmailDisplay");
 
-const allTimeCard = document.getElementById("allTimeCard");
 const atSessionsValue = document.getElementById("atSessionsValue");
 const atDurationValue = document.getElementById("atDurationValue");
 const atGoodPctValue = document.getElementById("atGoodPctValue");
@@ -90,7 +81,7 @@ let alertHideTimeout = null;
 let session = null; // reset on start
 let trendChart = null;
 
-let cloud = null; // populated by initCloudSync() once Firebase modules load successfully
+let cloud = null; // populated by initAuthGate() once Firebase modules load successfully
 let currentUser = null;
 let unsubscribeSettings = null;
 let applyingRemoteSettings = false; // guard against write-back loops while syncing
@@ -126,6 +117,20 @@ function applyLanguage(newLang) {
 
 langToggle.addEventListener("click", () => {
   applyLanguage(lang === "en" ? "ar" : "en");
+  syncSettingsToCloud();
+});
+
+/* ---------------------------------------------------------------------- */
+/* Theme                                                                    */
+/* ---------------------------------------------------------------------- */
+function updateThemeToggleIcon() {
+  themeToggle.textContent = getStoredTheme() === "dark" ? "☀️" : "🌙";
+}
+
+themeToggle.addEventListener("click", () => {
+  applyTheme(getStoredTheme() === "dark" ? "light" : "dark");
+  updateThemeToggleIcon();
+  updateChartTheme();
   syncSettingsToCloud();
 });
 
@@ -544,8 +549,32 @@ function updateTrendChart() {
   chartEmpty.classList.toggle("hidden", session.chartScores.length > 0);
 }
 
+function chartColors() {
+  const dark = getStoredTheme() === "dark";
+  return {
+    grid: dark ? "#33383d" : "#e1e0d9",
+    tick: dark ? "#9aa0a6" : "#8b8b86",
+    tooltipBg: dark ? "#1e2124" : "#ffffff",
+    tooltipText: dark ? "#ececeb" : "#2d2d2d",
+  };
+}
+
+function updateChartTheme() {
+  if (!trendChart) return;
+  const c = chartColors();
+  trendChart.options.scales.y.grid.color = c.grid;
+  trendChart.options.scales.y.ticks.color = c.tick;
+  trendChart.options.scales.x.ticks.color = c.tick;
+  trendChart.options.plugins.tooltip.backgroundColor = c.tooltipBg;
+  trendChart.options.plugins.tooltip.titleColor = c.tooltipText;
+  trendChart.options.plugins.tooltip.bodyColor = c.tooltipText;
+  trendChart.options.plugins.tooltip.borderColor = c.grid;
+  trendChart.update("none");
+}
+
 function initTrendChart() {
   const chartCanvas = document.getElementById("trendChart");
+  const c = chartColors();
   trendChart = new Chart(chartCanvas, {
     type: "line",
     data: {
@@ -574,21 +603,21 @@ function initTrendChart() {
         y: {
           min: 0,
           max: 100,
-          grid: { color: "#e1e0d9" },
-          ticks: { color: "#8b8b86", callback: (v) => `${v}%` },
+          grid: { color: c.grid },
+          ticks: { color: c.tick, callback: (v) => `${v}%` },
         },
         x: {
           grid: { display: false },
-          ticks: { color: "#8b8b86", maxTicksLimit: 8 },
+          ticks: { color: c.tick, maxTicksLimit: 8 },
         },
       },
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: "#ffffff",
-          titleColor: "#2d2d2d",
-          bodyColor: "#2d2d2d",
-          borderColor: "#e1e0d9",
+          backgroundColor: c.tooltipBg,
+          titleColor: c.tooltipText,
+          bodyColor: c.tooltipText,
+          borderColor: c.grid,
           borderWidth: 1,
           callbacks: {
             label: (item) => (item.raw === null ? "" : `${item.raw}%`),
@@ -602,39 +631,6 @@ function initTrendChart() {
 /* ---------------------------------------------------------------------- */
 /* Account & cloud sync (Firebase)                                         */
 /* ---------------------------------------------------------------------- */
-function authErrorKey(err) {
-  switch (err?.code) {
-    case "auth/invalid-credential":
-    case "auth/wrong-password":
-    case "auth/user-not-found":
-      return "authErrorInvalidCreds";
-    case "auth/email-already-in-use":
-      return "authErrorEmailInUse";
-    case "auth/weak-password":
-      return "authErrorWeakPassword";
-    default:
-      return "authErrorGeneric";
-  }
-}
-
-function showAuthError(err) {
-  authError.textContent = t(lang, authErrorKey(err));
-  authError.classList.remove("hidden");
-}
-
-function clearAuthError() {
-  authError.classList.add("hidden");
-}
-
-function setAuthUI(user) {
-  authLoggedOut.classList.toggle("hidden", !!user);
-  authLoggedIn.classList.toggle("hidden", !user);
-  allTimeCard.classList.toggle("hidden", !user);
-  if (user) {
-    userEmailDisplay.textContent = user.email || "";
-  }
-}
-
 // Pushes the current local settings to Firestore, ignoring the write if we're
 // mid-apply of a settings snapshot that just came from Firestore itself
 // (avoids a save -> snapshot -> save feedback loop).
@@ -643,6 +639,7 @@ function syncSettingsToCloud() {
   cloud
     .saveSettings(currentUser.uid, {
       lang,
+      theme: getStoredTheme(),
       alertThreshold: settings.alertThreshold,
       soundEnabled: settings.soundEnabled,
     })
@@ -654,6 +651,11 @@ function applyRemoteSettings(remote) {
   applyingRemoteSettings = true;
 
   if (remote.lang && remote.lang !== lang) applyLanguage(remote.lang);
+  if (remote.theme && remote.theme !== getStoredTheme()) {
+    applyTheme(remote.theme);
+    updateThemeToggleIcon();
+    updateChartTheme();
+  }
   if (typeof remote.alertThreshold === "number") {
     settings.alertThreshold = remote.alertThreshold;
     thresholdSlider.value = settings.alertThreshold;
@@ -697,33 +699,18 @@ async function refreshAllTimeStats() {
   }
 }
 
-authForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  if (!cloud) return;
-  clearAuthError();
-  cloud.signIn(authEmail.value, authPassword.value).catch(showAuthError);
-});
-
-signUpBtn.addEventListener("click", () => {
-  if (!cloud) return;
-  clearAuthError();
-  cloud.signUp(authEmail.value, authPassword.value).catch(showAuthError);
-});
-
-googleSignInBtn.addEventListener("click", () => {
-  if (!cloud) return;
-  clearAuthError();
-  cloud.signInWithGoogle().catch(showAuthError);
-});
-
 signOutBtn.addEventListener("click", () => {
   if (!cloud) return;
-  cloud.signOutUser().catch((err) => console.error("Sign-out failed:", err));
+  cloud
+    .signOutUser()
+    .then(() => window.location.replace("index.html"))
+    .catch((err) => console.error("Sign-out failed:", err));
 });
 
-// Firebase is loaded dynamically so that a blocked or offline Firebase CDN
-// only takes out cloud sync, never the core camera/posture-detection feature.
-async function initCloudSync() {
+// This page requires a signed-in user. Firebase loads dynamically; if it
+// fails to load, isn't configured, or there's no signed-in user, send the
+// visitor back to the sign-in page instead of showing the app half-broken.
+async function initAuthGate() {
   let modules;
   try {
     modules = await Promise.all([
@@ -733,7 +720,7 @@ async function initCloudSync() {
     ]);
   } catch (err) {
     console.warn("Cloud sync unavailable — Firebase failed to load:", err);
-    accountCard.classList.add("hidden");
+    window.location.replace("index.html");
     return;
   }
 
@@ -741,34 +728,36 @@ async function initCloudSync() {
   cloud = { ...appMod, ...authMod, ...syncMod };
 
   if (!cloud.isFirebaseConfigured) {
-    authForm.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
-    firebaseWarning.classList.remove("hidden");
+    window.location.replace("index.html");
     return;
   }
 
   cloud.watchAuthState((user) => {
+    if (!user) {
+      window.location.replace("index.html");
+      return;
+    }
+
     currentUser = user;
-    setAuthUI(user);
-    clearAuthError();
-    authForm.reset();
+    userEmailDisplay.textContent = user.email || "";
+    document.body.classList.remove("gate-loading");
 
     if (unsubscribeSettings) {
       unsubscribeSettings();
       unsubscribeSettings = null;
     }
-
-    if (user) {
-      unsubscribeSettings = cloud.watchSettings(user.uid, applyRemoteSettings);
-      refreshAllTimeStats();
-    }
+    unsubscribeSettings = cloud.watchSettings(user.uid, applyRemoteSettings);
+    refreshAllTimeStats();
   });
 }
 
-initCloudSync();
+initAuthGate();
 
 /* ---------------------------------------------------------------------- */
 /* Init                                                                     */
 /* ---------------------------------------------------------------------- */
+initTheme();
+updateThemeToggleIcon();
 initTrendChart();
 applyLanguage(lang);
 updateDashboardUI();

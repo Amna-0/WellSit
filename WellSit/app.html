@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PostureCare — AI Posture Monitor</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="gate-loading">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">🧘</span>
+        <h1 data-i18n="appTitle">PostureCare</h1>
+      </div>
+      <div class="topbar-actions">
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">🌙</button>
+        <button id="langToggle" class="lang-toggle" type="button">
+          <span id="langToggleText">العربية</span>
+        </button>
+      </div>
+    </header>
+
+    <p class="subtitle" data-i18n="appSubtitle">
+      AI-powered real-time posture monitoring — private, local, and free.
+    </p>
+
+    <div class="user-bar">
+      <span class="user-chip">
+        <span class="user-dot"></span>
+        <span id="userEmailDisplay"></span>
+      </span>
+      <button id="signOutBtn" class="btn btn-secondary" type="button" data-i18n="signOutBtn">Sign Out</button>
+    </div>
+
+    <main class="grid">
+      <section class="card camera-card">
+        <div class="video-wrap" id="videoWrap">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="overlay"></canvas>
+          <div id="statusBadge" class="status-badge status-none">
+            <span class="dot"></span>
+            <span id="statusText" data-i18n="statusWaiting">Waiting for camera…</span>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="startBtn" class="btn btn-primary" type="button" data-i18n="startBtn">Start Monitoring</button>
+          <button id="stopBtn" class="btn btn-secondary" type="button" data-i18n="stopBtn" disabled>Stop Monitoring</button>
+          <button id="settingsToggle" class="btn btn-ghost" type="button" aria-label="Settings" title="Settings">⚙</button>
+        </div>
+
+        <div id="settingsPanel" class="settings-panel hidden">
+          <h3 data-i18n="settingsTitle">Settings</h3>
+          <label class="setting-row">
+            <span data-i18n="alertThresholdLabel">Alert after poor posture for</span>
+            <div class="slider-row">
+              <input type="range" id="thresholdSlider" min="5" max="60" step="5" value="30" />
+              <span id="thresholdValue">30s</span>
+            </div>
+          </label>
+          <label class="setting-row checkbox-row">
+            <input type="checkbox" id="soundToggle" checked />
+            <span data-i18n="soundLabel">Enable sound alerts</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="card metrics-card">
+        <h3 data-i18n="metricsTitle">Live Metrics</h3>
+
+        <div class="metric">
+          <div class="metric-label">
+            <span data-i18n="neckLabel">Neck Tilt</span>
+            <span id="neckValue" class="metric-value">--°</span>
+          </div>
+          <div class="metric-bar"><div id="neckBar" class="metric-fill"></div></div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">
+            <span data-i18n="shoulderLabel">Shoulder Balance</span>
+            <span id="shoulderValue" class="metric-value">--°</span>
+          </div>
+          <div class="metric-bar"><div id="shoulderBar" class="metric-fill"></div></div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">
+            <span data-i18n="spineLabel">Back / Spine Curve</span>
+            <span id="spineValue" class="metric-value">--°</span>
+          </div>
+          <div class="metric-bar"><div id="spineBar" class="metric-fill"></div></div>
+        </div>
+      </section>
+    </main>
+
+    <section class="card dashboard">
+      <h3 data-i18n="dashboardTitle">Session Dashboard</h3>
+      <div class="stats-grid">
+        <div class="stat">
+          <span id="statDurationValue" class="stat-value">00:00</span>
+          <span class="stat-label" data-i18n="statDuration">Duration</span>
+        </div>
+        <div class="stat">
+          <span id="statGoodPctValue" class="stat-value good">--%</span>
+          <span class="stat-label" data-i18n="statGoodPct">Good Posture</span>
+        </div>
+        <div class="stat">
+          <span id="statPoorPctValue" class="stat-value poor">--%</span>
+          <span class="stat-label" data-i18n="statPoorPct">Poor Posture</span>
+        </div>
+        <div class="stat">
+          <span id="statAlertsValue" class="stat-value">0</span>
+          <span class="stat-label" data-i18n="statAlerts">Alerts Triggered</span>
+        </div>
+      </div>
+      <h4 data-i18n="chartTitle">Posture Quality Trend</h4>
+      <div class="chart-wrap">
+        <canvas id="trendChart"></canvas>
+        <p id="chartEmpty" class="chart-empty" data-i18n="chartEmpty">Start a session to see your posture trend here.</p>
+      </div>
+    </section>
+
+    <section class="card all-time-card" id="allTimeCard">
+      <h3 data-i18n="allTimeTitle">All-Time Stats</h3>
+      <div class="stats-grid">
+        <div class="stat">
+          <span id="atSessionsValue" class="stat-value">0</span>
+          <span class="stat-label" data-i18n="atSessions">Sessions</span>
+        </div>
+        <div class="stat">
+          <span id="atDurationValue" class="stat-value">00:00</span>
+          <span class="stat-label" data-i18n="atDuration">Total Time</span>
+        </div>
+        <div class="stat">
+          <span id="atGoodPctValue" class="stat-value good">--%</span>
+          <span class="stat-label" data-i18n="atGoodPct">Avg Good Posture</span>
+        </div>
+        <div class="stat">
+          <span id="atAlertsValue" class="stat-value">0</span>
+          <span class="stat-label" data-i18n="atAlerts">Total Alerts</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="privacy-note" data-i18n="privacyNote">
+      🔒 100% private: all video is processed locally in your browser. Nothing is ever uploaded or recorded.
+    </footer>
+  </div>
+
+  <div id="alertBanner" class="alert-banner hidden" role="alert">
+    <span id="alertText"></span>
+    <button id="alertDismiss" type="button" aria-label="Dismiss">×</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

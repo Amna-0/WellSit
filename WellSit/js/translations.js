@@ -51,6 +51,8 @@ export const translations = {
     atDuration: "Total Time",
     atGoodPct: "Avg Good Posture",
     atAlerts: "Total Alerts",
+    loginTitle: "Sign in to PostureCare",
+    loginSubtitle: "Track your sitting posture in real time — sign in to get started.",
   },
   ar: {
     appTitle: "بوسـتشر كير",
@@ -102,6 +104,8 @@ export const translations = {
     atDuration: "إجمالي الوقت",
     atGoodPct: "متوسط الوضعية الجيدة",
     atAlerts: "إجمالي التنبيهات",
+    loginTitle: "تسجيل الدخول إلى بوستشر كير",
+    loginSubtitle: "تابع وضعية جلوسك في الوقت الفعلي — سجّل الدخول للبدء.",
   },
 };
 

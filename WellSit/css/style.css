@@ -31,6 +31,31 @@
   --shadow: 0 2px 10px rgba(45, 45, 45, 0.06), 0 1px 2px rgba(45, 45, 45, 0.04);
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #16181a;
+  --page-plane: #101113;
+  --surface: #1e2124;
+  --surface-2: #262a2e;
+  --border: rgba(255, 255, 255, 0.08);
+
+  --text-primary: #ececeb;
+  --text-secondary: #b8bcc0;
+  --text-muted: #8b9096;
+
+  --status-good-bg: rgba(12, 163, 12, 0.16);
+  --status-poor-bg: rgba(208, 59, 59, 0.16);
+  --status-none-bg: rgba(139, 139, 134, 0.16);
+
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .video-wrap,
+:root[data-theme="dark"] #video {
+  background: #2a2d30;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -78,6 +103,12 @@ html[dir="rtl"] body {
   color: var(--text-primary);
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .lang-toggle {
   border: 1px solid var(--border);
   background: var(--surface);
@@ -96,6 +127,28 @@ html[dir="rtl"] body {
   transform: translateY(-1px);
 }
 
+.theme-toggle {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 16px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.theme-toggle:hover {
+  background: var(--surface-2);
+  transform: translateY(-1px);
+}
+
 .subtitle {
   color: var(--text-secondary);
   margin: 6px 0 26px;
@@ -105,6 +158,19 @@ html[dir="rtl"] body {
 /* ---------- Account / cloud sync ---------- */
 .account-card {
   margin-top: 20px;
+}
+
+.user-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 6px 0 22px;
+}
+
+.user-bar .user-chip {
+  margin-bottom: 0;
 }
 
 .auth-hint {
@@ -582,4 +648,61 @@ html[dir="rtl"] .alert-banner {
 
 .hidden {
   display: none !important;
+}
+
+/* ---------- Gate (hide app content until auth state resolves) ---------- */
+body.gate-loading {
+  visibility: hidden;
+}
+
+/* ---------- Login page ---------- */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 20px;
+}
+
+.login-topbar {
+  position: fixed;
+  top: 20px;
+  inset-inline-end: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.login-card .brand {
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.login-card .subtitle {
+  margin-bottom: 26px;
+}
+
+.login-card .auth-form {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.login-card .auth-form input {
+  flex: none;
+  width: 100%;
+}
+
+.login-card .auth-actions {
+  flex-direction: column;
+}
+
+.login-card .auth-actions .btn {
+  width: 100%;
 }
