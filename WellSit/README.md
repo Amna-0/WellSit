@@ -78,12 +78,12 @@ css/style.css            Design system — light + dark theme
 js/translations.js       EN / AR string dictionary
 js/theme.js              Light/dark theme state (localStorage + [data-theme])
 js/postureAnalysis.js    Landmark → angle → posture-status math (pure functions)
-js/login.js               Sign-in page wiring (sign up / sign in / Google)
+js/login.js               Sign-in page wiring (sign up / sign in, username or email)
 js/main.js                Camera, pose-model loop, UI wiring, session dashboard
 js/firebase-config.js     Your Firebase project's web config (fill this in)
 js/firebase-app.js        Initializes the Firebase app/auth/firestore instances
-js/auth.js                Sign up / sign in / Google sign-in / sign out
-js/cloudSync.js           Settings sync + session history + all-time stats
+js/auth.js                Sign up / sign in / sign out (Firebase Auth wrapper)
+js/cloudSync.js           Settings sync, session history, all-time stats, username lookup
 firestore.rules           Per-user Firestore security rules
 run.ps1                   One-click local server + browser launch
 ```
@@ -94,7 +94,11 @@ Signing in is required — `index.html` is the entry point and `app.html`
 (the actual posture monitor) redirects back to it if there's no signed-in
 user. Once signed in you get:
 
-- An account (email/password or Google) tied to a Firebase project you own.
+- An account tied to a Firebase project you own, created with a username,
+  email, and password. Signing back in accepts either the username or the
+  email. (Firebase Auth itself only knows email/password; a `usernames`
+  collection in Firestore maps each username to its account's email — see
+  `js/cloudSync.js` and the `usernames` rule in `firestore.rules`.)
 - Settings (language, theme, alert threshold, sound) synced in real time
   across every device signed into that account.
 - Session history saved to Firestore, and an "All-Time Stats" panel
@@ -110,9 +114,7 @@ that version of `js/cloudSync.js` / `js/firebase-app.js` if needed.
 **Setup:**
 
 1. Create a project at [console.firebase.google.com](https://console.firebase.google.com).
-2. **Authentication** → *Get started* → enable the **Email/Password**
-   provider (and **Google**, if you want the "Continue with Google" button
-   to work).
+2. **Authentication** → *Get started* → enable the **Email/Password** provider.
 3. **Firestore Database** → *Create database* → start in production mode.
 4. Deploy `firestore.rules` from this repo (Firestore → Rules tab → paste
    its contents → Publish). It restricts every user to reading/writing only

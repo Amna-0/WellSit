@@ -23,17 +23,28 @@
       Track your sitting posture in real time — sign in to get started.
     </p>
 
-    <form id="authForm" class="auth-form">
-      <input type="email" id="authEmail" data-i18n-placeholder="emailLabel" placeholder="Email" required />
-      <input type="password" id="authPassword" data-i18n-placeholder="passwordLabel" placeholder="Password" required minlength="6" />
+    <form id="signInForm" class="auth-form">
+      <input type="text" id="signInIdentifier" data-i18n-placeholder="usernameOrEmailLabel" placeholder="Username or email" required autocomplete="username" />
+      <input type="password" id="signInPassword" data-i18n-placeholder="passwordLabel" placeholder="Password" required minlength="6" autocomplete="current-password" />
       <div class="auth-actions">
         <button type="submit" id="signInBtn" class="btn btn-primary" data-i18n="signInBtn">Sign In</button>
-        <button type="button" id="signUpBtn" class="btn btn-secondary" data-i18n="signUpBtn">Create Account</button>
-        <button type="button" id="googleSignInBtn" class="btn btn-secondary" data-i18n="signInGoogleBtn">Continue with Google</button>
       </div>
     </form>
+
+    <form id="signUpForm" class="auth-form hidden">
+      <input type="text" id="signUpUsername" data-i18n-placeholder="usernameLabel" placeholder="Username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+" autocomplete="username" />
+      <input type="email" id="signUpEmail" data-i18n-placeholder="emailLabel" placeholder="Email" required autocomplete="email" />
+      <input type="password" id="signUpPassword" data-i18n-placeholder="passwordLabel" placeholder="Password" required minlength="6" autocomplete="new-password" />
+      <input type="password" id="signUpConfirmPassword" data-i18n-placeholder="confirmPasswordLabel" placeholder="Confirm password" required minlength="6" autocomplete="new-password" />
+      <div class="auth-actions">
+        <button type="submit" id="signUpBtn" class="btn btn-primary" data-i18n="signUpBtn">Create Account</button>
+      </div>
+    </form>
+
     <p id="authError" class="auth-error hidden"></p>
     <p id="firebaseWarning" class="auth-warning hidden" data-i18n="firebaseNotConfigured">Cloud sync isn't set up yet — add your Firebase project config in js/firebase-config.js.</p>
+
+    <button id="modeSwitchBtn" type="button" class="mode-switch" data-i18n="switchToSignUp">Don't have an account? Create one</button>
   </div>
 
   <script type="module" src="js/login.js"></script>
